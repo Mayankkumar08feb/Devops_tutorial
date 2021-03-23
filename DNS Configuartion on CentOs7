@@ -1,0 +1,172 @@
+DNS Configuration on Centos7 step by Step
+Steps are mention below in Details.
+--> Before configuration make sure system is updated with latest package. Commands are mention below.
+###############################################
+		#yum install -y epel-release
+		#yum update -y 
+###############################################
+Once system updated make sure rebooted the system use below command for reboot.
+
+		#reboot
+		
+Move ahead and install DNS depended packages which is mention below.
+
+		#yum install -y bind*
+		or
+		#yum install -y bind bind-utils
+		
+################################################################################
+
+Before moving to DNS configuration, set the HOSTNAME for Machine. 
+For example: i am setting my machine name as tech-Linux1.com 
+
+		#echo "192.168.43.155 tech-Linux1.com" >> /etc/hosts
+		#hostnamectl set-hostname tech-Linux.com
+		#exit or logout
+
+login back and move ahead for DNS configuration
+
+		# vi /etc/named.conf
+
+Look for above mentioned conf file and do the changes as mention below parameter.
+
+	options {
+        listen-on port 53 { 127.0.0.1; 192.168.43.155; };
+        listen-on-v6 port 53 { ::1; };
+        directory       "/var/named";
+        dump-file       "/var/named/data/cache_dump.db";
+        statistics-file "/var/named/data/named_stats.txt";
+        memstatistics-file "/var/named/data/named_mem_stats.txt";
+        recursing-file  "/var/named/data/named.recursing";
+        secroots-file   "/var/named/data/named.secroots";
+        allow-query     { localhost; any; };
+
+****The changes are in below mention line, insert your ip ranges or ip.
+	listen-on port 53 { 127.0.0.1; 192.168.43.155; };
+	allow-query     { localhost; any; }; <-- in place of any choose ip range as per requirement.
+	
+*****Add or Define Forward Zone & Reverse Zone, On the bottom of above mentioned named.conf file. 
+
+	zone "tech-linux.com" IN {
+	type master;
+	file "forward.tech-linux.com"
+	allow-update { none; };
+	};
+	
+	zone "43.168.192.in-addr.arpa" IN {
+	type: master;
+	file: "reverse.tech-linux.com";
+	allow-update { none; };
+	};
+	
+******Here Configuration part is over, now we have to create two files for forward & reverse in location " /var/named "
+
+	# cd /varnamed
+	# cp named.localhost forward.tech-linux.com
+	# cp named.localhost recverse.tech-linux.com
+
+******Now, Edit the forward & Reverse zone file and make the appropiate entry as mentioned below.
+
+	# vi  forward.tech-linux.com
+	
+*************Default file**********
+	$TTL 1D
+@       IN SOA  @ rname.invalid. (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+        NS      @
+        A       127.0.0.1
+        AAAA    ::1
+	 
+****************************************
+Changes need to updated in this file." After Entry looks like"
+**************************************** 	
+	$TTL 1D
+@       IN SOA  tech-linux.com. server.tech-linux.com. (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+@       IN      NS      tech-linux.com.
+@       IN      A       192.168.43.155
+web 	IN 	A	192.168.43.156
+desktop IN	A	192.168.43.156
+Client	IN	A	192.168.43.1577
+
+*******In same way, Reverse zone file and make the appropiate entry as mentioned below.
+
+	# vi  forward.tech-linux.com
+	
+	$TTL 1D
+@       IN SOA  tech-linux.com. server.tech-linux.com. (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+@       IN      NS      tech-linux.com.
+@       IN      PTR     tech-linux.com.
+156     IN      PTR     web.tech-linux.com.
+156     IN      PTR     server.tech-linux.com.
+158     IN      PTR     mail.tech-linux.com.
+157     IN      PTR     client.tech-linux.com.
+
+******* Changes Owner of forward & Reverse zone file to named.
+
+	-rw-r-----. 1 root  root   272 Mar 23 14:19 forward.tech-linux.com
+	-rw-r-----. 1 root  root   329 Mar 23 14:26 reverse.tech-linux.com
+	
+	#chown root:named forward.tech-linux.com
+	#chown root:named reverse.tech-linux.com
+	
+*******Here, DNS Configuration is completed and time to check if configuarion has been made correctly.
+
+	#[root@tech-linux named]# named-checkconf -z /etc/named.conf
+	zone localhost.localdomain/IN: loaded serial 0
+	zone localhost/IN: loaded serial 0
+	zone 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa/IN: loaded serial 0
+	zone 1.0.0.127.in-addr.arpa/IN: loaded serial 0
+	zone 0.in-addr.arpa/IN: loaded serial 0
+
+******* Checking the Zone file.
+	
+	#[root@tech-linux named]# named-checkzone forward /var/named/forward.tech-linux.com
+	zone forward/IN: loaded serial 0
+	OK
+ 	#[root@tech-linux named]# named-checkzone reverse /var/named/reverse.tech-linux.com 
+	zone reverse/IN: loaded serial 0
+	OK
+
+*******
+	# nslookup tech-linux.com
+	# dig  tech-linux.com
+	
+
+
+
+
+
+
+
+
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+		 
+
